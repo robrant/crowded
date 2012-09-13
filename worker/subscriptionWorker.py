@@ -1,0 +1,209 @@
+import os
+import sys
+import datetime
+import json
+#============================================================================================
+# TO ENSURE ALL OF THE FILES CAN SEE ONE ANOTHER.
+
+# Get the directory in which this was executed (current working dir)
+cwd = os.getcwd()
+wsDir = os.path.dirname(cwd)
+
+# Find out whats in this directory recursively
+for root, subFolders, files in os.walk(wsDir):
+    # Loop the folders listed in this directory
+    for folder in subFolders:
+        directory = os.path.join(root, folder)
+        if directory.find('.git') == -1:
+            if directory not in sys.path:
+                sys.path.append(directory)
+
+#============================================================================================
+
+import mdb
+from baseUtils import getConfigParameters
+from instagram import InstagramAPI
+
+#///////////////////////////////////////////////////////////////////////////////////////////////
+#
+#///////////////////////////////////////////////////////////////////////////////////////////////
+
+def checkForExistingSubs(p, subsCollHandle, event):
+    ''' Check whether the subscription is already being monitored.
+        If it is, replace its start date so that it doesn't get aged off.'''
+
+    # Check for tag subscriptions of this value already in existence
+    if event['object']=='tag':
+        if subsCollHandle.find({'objectId':event['tag']}).count() == 1:
+            exists = True
+        else:
+            exists = False
+
+        # Do the update
+        subsCollHandle.update({'objectId':event['tag']},
+                              {'start'   :datetime.datetime.utcnow()})
+    
+    elif event['object']=='geography':
+        
+        query = {'loc':{'$near':[event['lon'],event['lat']], '$maxDistance':event['radius']}}
+        if subsCollHandle.find(query).count() > 0:
+            exists = True
+        else:
+            exists = False
+        
+    else:
+        exists = False
+    
+    return exists
+
+#------------------------------------------------------------------------------------------------------------
+
+def checkGeos(lat=None, lon=None, radius=None, maxRad=5000):
+    ''' Checks the validity of lat, lon and radius '''
+
+    try:    lat = float(lat)
+    except: lat = None
+    try:    lon = float(lon)
+    except: lon = None
+    try:    radius = float(radius)
+    except: radius = None
+
+    if not lat or lat < -90.0 or lat > 90.0:
+        lat = None
+    
+    if not lon or lon < -180.0 or lon > 180.0:
+        lon = None
+
+    if radius < 0.0 or radius > 5000.0:
+        radius = None
+        
+    return lat, lon, radius
+
+#------------------------------------------------------------------------------------------------------------
+
+def updateSubs(subsCollHandle, subType, subId, objectId, aspect, event, user, protect=False):
+    ''' Updates the subs collection with information relating to the subscription that has
+        just been created on the instagram server. '''
+
+    # Build the basic doc with flds common both geo and tag
+    doc = {'type'     : subType,
+           'subId'    : subId,
+           'objectId' : objectId,
+           'aspect'   : aspect,
+           'user'     : user,
+           'start'    : datetime.datetime.utcnow(),
+           'protect'  : False}
+    
+    # Add special fields for the geo-based subscriptions
+    if event['object'] == 'geography':
+        doc['loc'] = [event['lon'], event['lat']]
+        doc['radius'] = event['radius']
+    
+    print "Subscription document to be inserted:"
+    print doc
+    
+    # Insert the new record of a subscription
+    _id = subsCollHandle.insert(doc)
+    print "ID of successfully inserted subscription doc: %s" %_id
+    
+    if _id:
+        return objectId
+
+#------------------------------------------------------------------------------------------------------------
+
+def buildEventPlaceholder(evCollHandle, subType, event, objectId):
+    ''' Builds a new EVENT Document as a placeholder so all other events can be UPDATEs.'''
+
+    doc = {"objectId" : objectId,
+           "subType"  : subType,
+           "start"    : datetime.datetime.utcnow(),
+           "tags"     : {},
+           "media"    : []}
+
+    print "Event placeholder."
+    print doc
+
+    if subType == 'geography':
+        doc["loc"]    = [event['lon'], event['lat']]
+        doc["radius"] = event['radius']
+
+    _id = evCollHandle.insert(doc)
+    print "Id of successfully inserted event placeholder %s" %_id
+
+    return _id
+
+#------------------------------------------------------------------------------------------------------------
+
+def buildSubscription(event):
+    ''' Builds a new subscription based on an GET called event'''
+
+    # Placeholder for doing this by users/algorithm?
+    user = 'anon'
+
+    cwd = os.getcwd()
+    cfgs = os.path.join(cwd, 'config/crowded.cfg')
+    p = getConfigParameters(cfgs)
+
+    print "Config Filepath in buildSubscription: ", cfgs
+
+    # The mongo bits
+    c, dbh = mdb.getHandle(host=p.dbHost, port=p.dbPort, db=p.db, user=p.dbUser, password=p.dbPassword)
+    subsCollHandle = dbh[p.subsCollection]
+    evCollHandle   = dbh[p.eventsCollection]
+                
+    # Check whether we definitely need a new subscription or not    
+    exists = checkForExistingSubs(p, subsCollHandle, event)
+
+    print "Exists: %s" %exists
+    
+    # If the subscription doesn't already exist, 
+    if exists == False:
+        
+        # Get the client and secret keys
+        api = InstagramAPI(client_id=p.client, client_secret=p.secret)
+    
+        # If it's a geo-based subscription
+        if event['object'] == 'geography':
+            res = api.create_subscription(object='geography', lat=event['lat'], lng=event['lon'], radius=event['radius'],
+                                    aspect='media', callback_url=p.subBaseUrl)
+            print "Geo Subscription setup: %s" %res
+        # A tag-based subscription
+        elif event['object'] == 'tag':
+            res = api.create_subscription(object='tag', object_id=event['tag'], aspect='media', callback_url=p.subBaseUrl)
+            print "Tag Subscription setup: %s" %res
+        # Just in case
+        else:
+            res = None
+    
+        # Update the subscription collection 
+        if res and res['meta']['code']==200:
+    
+            data = res['data']
+            subType  = data['object'] 
+            objectId = data['object_id'] 
+            subId    = data['id']
+            aspect   = data['aspect']
+            success = updateSubs(subsCollHandle, subType, subId, objectId, aspect, event, user)
+            
+            # Build the response 
+            response = {'success': True,
+                        'object' : objectId,
+                        'url'    : "%s/%s" %(p.baseUrl, success)}
+        
+            # Insert a blank document to populate
+            _id = buildEventPlaceholder(evCollHandle, subType, event, objectId)
+            
+        # Something failed in the subscription build...?
+        else:
+            response = {'success': False}
+    
+    # A valid subscription already exists 
+    else:
+        response = {'success': True}
+
+    print "The response: ", response
+
+    # Close the connection/handle
+    mdb.close(c, dbh)
+
+    return response

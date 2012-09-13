@@ -1,0 +1,15 @@
+# Reg expressions to filter out those tags we're definitely not interested in
+#
+
+(^iphon.*)
+(^ipad.*)
+(^insta.*)
+(^ig.*)
+(.*photo.*)
+(.*pic.*)
+(.*gram$)
+(.*oftheday$)
+(.*likes$)
+(.*followme$)
+
+# add others here on new lines

@@ -1,0 +1,4 @@
+1 */4 * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cleanupWorkers.py subs 24.0 True >> /home/dotcloud/code/errors/cleanupSubsErrors.log 2>&1
+
+2 */4 * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cleanupWorkers.py events 24.0 True >> /home/dotcloud/code/errors/cleanupEventsErrors.log 2>&1
+

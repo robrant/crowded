@@ -1,0 +1,43 @@
+[source]
+client = <your instagram client here>
+secret = <your instagram secret here>
+geoUrl = https://api.instagram.com/v1/geographies/<geo-id>/media/recent?client_id=<client-id>
+tagUrl = https://api.instagram.com/v1/tags/<tag>/media/recent?client_id=<client-id>
+
+[web]
+# Change these to reflect your callback subscription authentication url
+subBaseUrl = http://crowded-redsquirrel.dotcloud.com/event_callback
+# This is the base url from which your events will be served as a page. Eg. .../events/london2012
+baseUrl = https://crowded-redsquirrel.dotcloud.com/events
+helpUrl = https://crowded-redsquirrel.dotcloud.com/help
+
+# Probably wont need to change this.
+webStaticRoute = /home/dotcloud/code/static/
+
+[error]
+verbose = True
+write_out = True
+err_path = errors
+err_file = errorsExceptions.txt
+
+[backend]
+db = crowded
+host = localhost
+port = 27017
+user = crowdedWorker
+password = crowdedWorker123
+drop_collection = True
+
+# This provided for collection and index building - see baseUtils
+collections = [{"collection" : "events",
+				"plain"      : ["objectId"],
+				"compound"   : [],
+				"geo"		 : "loc"},
+		   	   
+		   	   {"collection" :"subs",
+		   	   "plain"       : [],
+		   	   "compound"    : [["start","protect"]],
+		   	   "geo"         : "loc"
+		   	   	}]
+
+		        
