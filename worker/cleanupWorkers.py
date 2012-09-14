@@ -40,18 +40,19 @@ from instagram import InstagramAPI
 #///////////////////////////////////////////////////////////////////////////////////////////////
 
 
-def getExpiredSubs(collHandle, ageOff=4, protectedSubs=False):
+def getExpiredSubs(collHandle, ageOff=4, protectedSubs=True):
     ''' Retrieves a list of expired subscriptions '''
 
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=ageOff/24.0)
     q = {'start':{'$lte':cutoff}, 'protect':protectedSubs}
-    
+    print q
     # Get a list of subs that need aging off
     res = collHandle.find(q)
 
     # One used to clean the sub on instagram. ObjectIds used to clean the config dir
     oldSubs, oldObjectIds = [], []
     for r in res:
+        print r
         oldSubs.append(r['subId'])
         oldObjectIds.append(r['objectId'])
 
@@ -75,7 +76,9 @@ def ageOffSubscriptions(p, collHandle, ageOff, protectedSubs):
     
     # Delete the subscriptions from the instagram server
     for sub in subs:
+        print sub
         deleted = api.delete_subscriptions(id=int(sub))
+        print deleted
         out.append(deleted)
         if deleted['meta']['code'] != 200:
             print 'Failed to delete subscription %s' %(sub)

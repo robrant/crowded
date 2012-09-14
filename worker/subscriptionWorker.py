@@ -91,8 +91,11 @@ def updateSubs(subsCollHandle, subType, subId, objectId, aspect, event, user, pr
            'objectId' : objectId,
            'aspect'   : aspect,
            'user'     : user,
-           'start'    : datetime.datetime.utcnow(),
-           'protect'  : False}
+           'start'    : datetime.datetime.utcnow()}
+    
+    # Sparse field only used where it is true
+    if protect==True:
+        doc['protect'] = True
     
     # Add special fields for the geo-based subscriptions
     if event['object'] == 'geography':

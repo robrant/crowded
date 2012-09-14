@@ -165,7 +165,6 @@ def helpPage():
     #output = template("help")    
     return "help coming soon."
 
-
 #------------------------------------------------------------------------------------------------
 
 @route('/noevent/<objectId>')
@@ -175,7 +174,6 @@ def noEvent(objectId=None):
     output = template("noEvent", objectId=objectId, helpPage=p.helpUrl)    
     return output
 
-
 #------------------------------------------------------------------------------------------------
 
 @route('/events/<objectId>')
@@ -183,11 +181,12 @@ def eventSplash(objectId=None):
     ''' Renders the media that relates to this event out to the browser. '''
 
     if not objectId:
-        abort(400, 'Must provide an object Id for event media.')
+        redirect("/help")
+        return
 
     # Get the objectId
     doc = crowdedWorker.getMediaByObjectId(p, objectId)
-    if not doc:
+    if not doc or len(doc.keys())<1:
         redirect("/noevent/%s" %(objectId)) 
         return
     
