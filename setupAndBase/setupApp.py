@@ -28,6 +28,7 @@ configFile = sys.argv[1]
 site = sys.argv[2]
 
 # Clean the instagram subscriptions on their server
+'---- Cleaning all existing subscriptions on instagram.'
 cleanupAllSubs.main(configFile)
 
 # Configuring the dotcloud settings for mongodb

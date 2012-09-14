@@ -73,6 +73,9 @@ def on_error(errFile='errors.txt', message=None):
 def on_event_request():
     ''' Receives GET requests from the user to setup subscriptions. '''
 
+    # Does the user want a linked outpage to make it easier to link to?
+    htmlPage = bool(request.query.html)
+
     event = None
     
     tag    = request.query.tag
@@ -103,15 +106,25 @@ def on_event_request():
         response = subscriptionWorker.buildSubscription(event)
         
         # Now get something populated in that so that its not blank
-        print "RESPONSE: ", response, type(response)
-        print "EVENT:", event, type(event)
         x = {"object" : event['object']}
         y = {"object_id" : response['object']}
         
         subInfo = [{"object" : event['object'], "object_id" : response['object']}]
         crowdedWorker.main(p, json.dumps(subInfo))
+    
+    # A user linked page for getting to the event splash page
+    if response.has_key('url'):
+        if htmlPage == True:
+            output = template("getToEventpage",
+                              objectId=objectId,
+                              eventPage=response['url'],
+                              helpPage=p.helpUrl)
+        else:
+            output = json.dumps(response)
+    else:
+        redirect("/help")
         
-    return json.dumps(response)
+    return output
 
 #-------------------------------------------------------------------------------------------
 
