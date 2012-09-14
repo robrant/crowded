@@ -27,6 +27,9 @@ configFile = sys.argv[1]
 # Where this is being run - 
 site = sys.argv[2]
 
+# Clean the instagram subscriptions on their server
+cleanupAllSubs.main(configFile)
+
 # Configuring the dotcloud settings for mongodb
 if site == 'dotcloud':
     print '---- Configuring the dotcloud settings for mongodb'
@@ -38,3 +41,4 @@ elif site == 'local':
 # Setup the database
 print '---- Setting up and populating database'
 setupDatabase.main(configFile)
+

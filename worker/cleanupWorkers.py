@@ -64,6 +64,7 @@ def getExpiredSubs(collHandle, ageOff=4, protectedSubs=None):
 
     return oldSubs, oldObjectIds
 
+
 #------------------------------------------------------------------------------------------------------------
 
 def ageOffSubscriptions(p, collHandle, ageOff, protectedSubs):
@@ -89,7 +90,7 @@ def ageOffSubscriptions(p, collHandle, ageOff, protectedSubs):
 
     # Delete the nextUrl object files (kept in the config directory)
     for objId in ids:
-        f = os.path.join(p.configFile, objId)
+        f = os.path.join(os.path.dirname(p.configFile), objId)
         try:
             os.remove(f)
         except:
