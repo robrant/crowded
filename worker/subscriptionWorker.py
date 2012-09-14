@@ -34,10 +34,11 @@ def checkForExistingSubs(p, subsCollHandle, event):
 
     # Check for tag subscriptions of this value already in existence
     if event['object']=='tag':
-        if subsCollHandle.find({'objectId':event['tag']}).count() == 1:
-            exists = True
+        res = subsCollHandle.find_one({'objectId':event['tag']})
+        if res.has_key('objectId'):
+            exists = {'exists':True,'objectId':res['objectId'], 'object':res['object']}
         else:
-            exists = False
+            exists = {'exists':False}
 
         # Do the update
         subsCollHandle.update({'objectId':event['tag']},
@@ -46,13 +47,14 @@ def checkForExistingSubs(p, subsCollHandle, event):
     elif event['object']=='geography':
         
         query = {'loc':{'$near':[event['lon'],event['lat']], '$maxDistance':event['radius']}}
-        if subsCollHandle.find(query).count() > 0:
-            exists = True
+        res = subsCollHandle.find_one(query)
+        if len(res.keys) > 0:
+            exists = {'exists':True, 'objectId':res['objectId'], 'object':res['object']}
         else:
-            exists = False
+            exists = {'exists':False}
         
     else:
-        exists = False
+            exists = {'exists':False}
     
     return exists
 
@@ -159,12 +161,12 @@ def buildSubscription(event):
     evCollHandle   = dbh[p.eventsCollection]
                 
     # Check whether we definitely need a new subscription or not    
-    exists = checkForExistingSubs(p, subsCollHandle, event)
+    checked = checkForExistingSubs(p, subsCollHandle, event)
 
     print "Exists: %s" %exists
     
     # If the subscription doesn't already exist, 
-    if exists == False:
+    if checked['exists'] == False:
         
         # Get the client and secret keys
         api = InstagramAPI(client_id=p.client, client_secret=p.secret)
@@ -202,11 +204,17 @@ def buildSubscription(event):
             
         # Something failed in the subscription build...?
         else:
-            response = {'success': False}
+            response = {'success'  : False,
+                        'objectId' : checked['objectId'],
+                        'object'   : checked['object'],
+                        'url'      : "%s/%s" %(p.baseUrl, checked['objectId'])}
     
     # A valid subscription already exists 
-    else:
-        response = {'success': True}
+    elif checked['exists'] == True:
+        response = {'success'  : True,
+                    'objectId' : checked['objectId'],
+                    'object'   : checked['object'],
+                    'url'      : "%s/%s" %(p.baseUrl, checked['objectId'])}
 
     print "The response: ", response
 

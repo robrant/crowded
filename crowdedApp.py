@@ -107,17 +107,14 @@ def on_event_request():
         response = subscriptionWorker.buildSubscription(event)
         
         # Now get something populated in that so that its not blank
-        x = {"object" : event['object']}
-        y = {"object_id" : response['object']}
-        
         subInfo = [{"object" : event['object'], "object_id" : response['object']}]
         crowdedWorker.main(p, json.dumps(subInfo))
     
     # A user linked page for getting to the event splash page
-    if response.has_key('url'):
+    if response.has_key('url') and response['success']==True:
         if htmlPage == True:
             output = template("getToEventpage",
-                              objectId=objectId,
+                              objectId=response['objectId'],
                               eventPage=response['url'],
                               helpPage=p.helpUrl)
         else:
