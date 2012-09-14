@@ -49,7 +49,7 @@ def checkForExistingSubs(p, subsCollHandle, event):
         query = {'loc':{'$near':[event['lon'],event['lat']], '$maxDistance':event['radius']}}
         res = subsCollHandle.find_one(query)
         if len(res.keys) > 0:
-            exists = {'exists':True, 'objectId':res['objectId'], 'object':res['object']}
+            exists = {'exists':True, 'objectId':res['objectId'], 'object':event['object']}
         else:
             exists = {'exists':False}
         
@@ -193,9 +193,10 @@ def buildSubscription(event):
             success = updateSubs(subsCollHandle, subType, subId, objectId, aspect, event, user)
             
             # Build the response 
-            response = {'success': True,
-                        'object' : objectId,
-                        'url'    : "%s/%s" %(p.baseUrl, success)}
+            response = {'success'  : True,
+                        'objectId' : objectId,
+                        'object'   : subType,
+                        'url'      : "%s/%s" %(p.baseUrl, success)}
         
             # Insert a blank document to populate
             _id = buildEventPlaceholder(evCollHandle, subType, event, objectId)
