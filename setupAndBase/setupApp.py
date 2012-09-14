@@ -20,6 +20,7 @@ for root, subFolders, files in os.walk(wsDir):
 
 import configureDatabase
 import setupDatabase
+import cleanupAllSubs
 
 # Get the config file
 configFile = sys.argv[1]
@@ -28,18 +29,18 @@ configFile = sys.argv[1]
 site = sys.argv[2]
 
 # Clean the instagram subscriptions on their server
-'---- Cleaning all existing subscriptions on instagram.'
+print '----> Cleaning all existing subscriptions on instagram.'
 cleanupAllSubs.main(configFile)
 
 # Configuring the dotcloud settings for mongodb
 if site == 'dotcloud':
-    print '---- Configuring the dotcloud settings for mongodb'
+    print '----> Configuring the dotcloud settings for mongodb'
     configureDatabase.main(configFile)
 elif site == 'local':
-    print 'Skipping all dotcloud configuration. '
+    print '***** Skipping all dotcloud configuration. '
     pass
 
 # Setup the database
-print '---- Setting up and populating database'
+print '----> Setting up and populating database'
 setupDatabase.main(configFile)
 
