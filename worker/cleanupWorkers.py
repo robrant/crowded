@@ -40,15 +40,19 @@ from instagram import InstagramAPI
 #///////////////////////////////////////////////////////////////////////////////////////////////
 
 
-def getExpiredSubs(collHandle, ageOff=4, protectedSubs=True):
+def getExpiredSubs(collHandle, ageOff=4, protectedSubs=None):
     ''' Retrieves a list of expired subscriptions '''
 
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=ageOff/24.0)
-    q = {'start':{'$lte':cutoff}, 'protect':protectedSubs}
-    print q
+    q = {'start':{'$lte':cutoff}}
+
+    if protecedSubs:
+        q['protect'] = protectedSubs
+        
     # Get a list of subs that need aging off
     res = collHandle.find(q)
-
+    print 'Subs Query: ', q
+    
     # One used to clean the sub on instagram. ObjectIds used to clean the config dir
     oldSubs, oldObjectIds = [], []
     for r in res:
@@ -95,16 +99,18 @@ def ageOffSubscriptions(p, collHandle, ageOff, protectedSubs):
 
 #------------------------------------------------------------------------------------------------------------
 
-def ageOffMetadata(collHandle, ageOff):
+def ageOffMetadata(collHandle, ageOff, protectMedia=None):
     ''' Deletes the metadata that is older than 'ageOff' stored in the events db. '''
 
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=ageOff/24.0)
     q = {'start':{'$lte':cutoff}}
     
+    if protectMedia:
+        q['protect'] = protectMedia
     # Get a list of subs that need aging off
     #res = collHandle.find(q)
     #oldEvents = [i['subId'] for i in res]
-
+    print 'Event Query: ', q
     res = collHandle.remove(q)
 
     return res
@@ -118,8 +124,6 @@ def main(cleanup, ageOff, protectedSubs=None):
     # If there is a command to remove or keep protected subs, use it
     if protectedSubs:
         protectedSubs = bool(protectedSubs)
-    else:
-        protectedSubs = False
     
     # Get the config information
     os.chdir('/home/dotcloud/code/')
@@ -139,7 +143,7 @@ def main(cleanup, ageOff, protectedSubs=None):
     # Or the events metadata collection
     elif cleanup == 'events':
         evCollHandle=dbh[p.eventsCollection]
-        res = ageOffMetadata(evCollHandle, ageOff=ageOff)
+        res = ageOffMetadata(evCollHandle, ageOff=ageOff, protectedMedia=protectedSubs)
         print datetime.datetime.utcnow(), res
         
     else:
@@ -148,11 +152,13 @@ def main(cleanup, ageOff, protectedSubs=None):
 
 if __name__ == '__main__':
     
+    # Don't clear the protected subs
     if len(sys.argv) == 3:
         cleanupType = sys.argv[1] 
         ageOffHours = float(sys.argv[2]) 
         main(cleanupType, ageOffHours)
     
+    # Where we want to clear the protected subs also
     elif len(sys.argv) == 4: 
         cleanupType = sys.argv[1] 
         ageOffHours = float(sys.argv[2]) 
@@ -163,5 +169,5 @@ if __name__ == '__main__':
         print "---- Cleanup operation requires 2 arguments:"
         print "----   cleanupType = subs | events"
         print "----   ageOffHours = <the minimum age of subscription to keep (in Hours)>"
-        print "---- Optional cleanup of protected subscriptions too"
+        print "---- It also has an optional cleanup of protected subscriptions too: boolean"
     

@@ -114,7 +114,7 @@ def updateSubs(subsCollHandle, subType, subId, objectId, aspect, event, user, pr
 
 #------------------------------------------------------------------------------------------------------------
 
-def buildEventPlaceholder(evCollHandle, subType, event, objectId):
+def buildEventPlaceholder(evCollHandle, subType, event, objectId, protect=None):
     ''' Builds a new EVENT Document as a placeholder so all other events can be UPDATEs.'''
 
     doc = {"objectId" : objectId,
@@ -125,6 +125,10 @@ def buildEventPlaceholder(evCollHandle, subType, event, objectId):
 
     print "Event placeholder."
     print doc
+
+    # Sparse field only used where it is true
+    if protect==True:
+        doc['protect'] = True
 
     if subType == 'geography':
         doc["loc"]    = [event['lon'], event['lat']]
