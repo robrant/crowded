@@ -75,7 +75,8 @@ def on_event_request():
 
     # Does the user want a linked outpage to make it easier to link to?
     htmlPage = bool(request.query.html)
-
+    print htmlPage
+    
     event = None
     
     tag    = request.query.tag
