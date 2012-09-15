@@ -36,7 +36,7 @@ def checkForExistingSubs(p, subsCollHandle, event):
     if event['object']=='tag':
         res = subsCollHandle.find_one({'objectId':event['tag']})
         if res and res.has_key('objectId'):
-            exists = {'exists':True,'objectId':res['objectId'], 'object':res['object']}
+            exists = {'exists':True,'objectId':res['objectId'], 'object':event['object']}
         else:
             exists = {'exists':False}
 
