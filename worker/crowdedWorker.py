@@ -300,11 +300,12 @@ def buildUrl(p, obj, objectId):
 
 #------------------------------------------------------------------------------------------------
 
-def reorderMedia(media, limit=100):
+def reorderMedia(media, limit=None):
     ''' Reorders the media by its date time field. '''
 
     outMedia = newlist = sorted(media, key=itemgetter('dt'), reverse=True) 
-    media = outMedia[:limit]
+    if limit and limit < len(outMedia):
+        media = outMedia[:limit]
 
     return media
 

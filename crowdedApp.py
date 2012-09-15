@@ -201,7 +201,7 @@ def eventSplash(objectId=None):
         redirect("/noevent/%s" %(objectId)) 
         return
     
-    media = crowdedWorker.reorderMedia(doc['media'])
+    media = crowdedWorker.reorderMedia(doc['media'], 200)
 
     # Other web page elements
     header = 'Event Media...'
