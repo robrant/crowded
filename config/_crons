@@ -5,10 +5,10 @@
 2 */4 * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cleanupWorkers.py events 24.0 True >> /home/dotcloud/code/errors/cleanupEventsErrors.log 2>&1
 
 # Cron to retrieve CCTV data relating to geographic events
-*/2 * * * * python /home/dotcloud/code/worker/cctvWorker.py /home/dotcloud/code/config/crowded.cfg geography cctv >> /home/dotcloud/code/errors/cctvWorker.log 2>&1
+*/2 * * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cctvWorker.py /home/dotcloud/code/config/crowded.cfg geography cctv >> /home/dotcloud/code/errors/cctvWorker.log 2>&1
 
 # Cron to retrieve YOUTUBE videa relating to geographic events
-#*/5 * * * * python /home/dotcloud/code/worker/youtubeWorker.py /home/dotcloud/code/config/crowded.cfg >> /home/dotcloud/code/errors/youtubeWorker.log 2>&1
+#*/5 * * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/youtubeWorker.py /home/dotcloud/code/config/crowded.cfg >> /home/dotcloud/code/errors/youtubeWorker.log 2>&1
 
 # Cron to retrieve YOUTUBE videa relating to geographic events
-#*/5 * * * * python /home/dotcloud/code/worker/flickrWorker.py /home/dotcloud/code/config/crowded.cfg >> /home/dotcloud/code/errors/flickrWorker.log 2>&1
+#*/5 * * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/flickrWorker.py /home/dotcloud/code/config/crowded.cfg >> /home/dotcloud/code/errors/flickrWorker.log 2>&1

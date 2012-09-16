@@ -46,7 +46,7 @@ def getExpiredSubs(collHandle, ageOff=4, protectedSubs=None):
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=ageOff/24.0)
     q = {'start':{'$lte':cutoff}}
 
-    if protecedSubs:
+    if protectedSubs:
         q['protect'] = protectedSubs
         
     # Get a list of subs that need aging off
@@ -144,7 +144,7 @@ def main(cleanup, ageOff, protectedSubs=None):
     # Or the events metadata collection
     elif cleanup == 'events':
         evCollHandle=dbh[p.eventsCollection]
-        res = ageOffMetadata(evCollHandle, ageOff=ageOff, protectedMedia=protectedSubs)
+        res = ageOffMetadata(evCollHandle, ageOff=ageOff, protectMedia=protectedSubs)
         print datetime.datetime.utcnow(), res
         
     else:
