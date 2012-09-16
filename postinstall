@@ -1,5 +1,5 @@
 #!/bin/sh
-python /home/dotcloud/code/setupAndBase/setupApp.py ./config/crowded.cfg dotcloud
+python /home/dotcloud/code/setupAndBase/setupApp.py /home/dotcloud/code/config/crowded.cfg dotcloud
 
 crontab /home/dotcloud/code/config/_crontab
 
