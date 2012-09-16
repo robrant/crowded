@@ -1,4 +1,5 @@
 #!/bin/sh
 python ./setupAndBase/setupApp.py ./config/crowded.cfg dotcloud
 
-crontab /home/dotcloud/code/worker/cleanupWorkerCron.txt
+crontab /home/dotcloud/code/config/_crons
+

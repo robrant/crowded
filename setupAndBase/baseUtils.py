@@ -57,6 +57,23 @@ class getConfigParameters():
         errorPath      = config.get("error", "err_path")   
         self.errorPath = os.path.join(wsDir, errorPath)
         self.errorFile = config.get("error", "err_file")
+
+        #\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+        # TFL DATASET PARAMETERS
+        try:    self.tflUrl = config.get("other_data", "tflUrl")
+        except: self.tflUrl = None
+        
+        # VIEWFINDER DATASET PARAMETERS
+        try:    self.viewFinderUrl = config.get("other_data", "vfUrl")
+        except: self.viewFinderUrl = None
+
+        # SOCIALISE DATASET PARAMETERS
+        try:     self.socialiseUrl = config.get("other_data", "seUrl")
+        except:  self.socialiseUrl = None
+
+        #\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+
         
 #----------------------------------------------------------------------------------------
 
