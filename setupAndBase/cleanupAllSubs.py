@@ -27,6 +27,7 @@ def main(configFile=None):
     ''' Deletes all subscriptions from the Instagram server. Typically called
         on a new dotcloud push just to make sure its all clear.'''
 
+    print "----------->", configFile
     # Get the config information into a single object
     p = getConfigParameters(configFile)
     
