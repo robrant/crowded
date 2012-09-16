@@ -66,7 +66,7 @@ def main(configFile=None):
     
     # Authenticate on the admin db
     c, dbh = mdb.getHandle(host=dcParams.mongoHost, port=dcParams.mongoPort, db='admin')
-
+    
     # Authentication of the administrator
     try:
         auth = dbh.authenticate(dcParams.adminUser, dcParams.adminPass)
@@ -80,8 +80,10 @@ def main(configFile=None):
     # Switch the database handle to that being used from the admin one
     dbh = c[p.db]
     success = dbh.add_user(p.dbUser, p.dbPassword)
+    c.disconnect()
     
     try:
+        c, dbh = mdb.getHandle(host=dcParams.mongoHost, port=dcParams.mongoPort, db=p.db)
         auth = dbh.authenticate(p.dbUser, p.dbPassword)
         print "---- Successful user authentication."
     except Exception, e:
