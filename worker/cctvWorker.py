@@ -30,6 +30,7 @@ import json
 import datetime
 import mdb                  # Custom library for mongo interaction
 from baseUtils import getConfigParameters
+import crowdedWorker
 
 #------------------------------------------------------------------------------------------ 
 def getActiveSubs(collHandle, type='geography'):
@@ -44,6 +45,7 @@ def hitUrl(url):
     ''' Hits the feed and gets back the rss xml file.
         Need some error handling in here. '''
     
+    print 'URL in hitUrl: %s' %url
     errors = []
     
     try:
@@ -63,10 +65,19 @@ def hitUrl(url):
 #------------------------------------------------------------------------------------------ 
 def queryByGeo(url, lat, lon, radius):
     ''' Queries the subs collection for active subscriptions '''
-     
+
+    # Scale the radius back to metres     
+    latScale, lonScale = crowdedWorker.radialToLinearUnits(float(lat))
+    scale = (latScale + lonScale)/2.0
+    print scale
+    radius *= scale
+    print radius
+    
     url = url.replace('<event_latitude>', str(lat)) 
     url = url.replace('<event_longitude>', str(lon))
     url = url.replace('<event_radius_in_metres>', str(radius))
+    
+    print 'URL: %s' %url
     
     errors, data = hitUrl(url) 
     if len(errors) > 0:
@@ -74,6 +85,8 @@ def queryByGeo(url, lat, lon, radius):
             print error
     else:
         media = json.loads(data)
+    
+    print 'Media: %s' %(media)
     
     return media
 
@@ -125,6 +138,7 @@ def main(configFile, subscriptionType, source):
     # Mongo connection parameters
     c, dbh = mdb.getHandle(host=p.dbHost, port=p.dbPort, db=p.db, user=p.dbUser, password=p.dbPassword)
     collHandle = dbh['subs']
+    evCollHandle = dbh['events']
     
     # Get the active subs
     activeSubs = getActiveSubs(collHandle, type=subscriptionType)
@@ -137,9 +151,10 @@ def main(configFile, subscriptionType, source):
     # For each active active subscription, query by geograph
     for aSub in activeSubs:
         
+        print 'ASUB:', aSub
         if subscriptionType == 'geography':
             lon, lat = aSub['loc']
-            radius = float(aSubs['radius'])
+            radius = float(aSub['radius'])
             media = queryByGeo(url, lat, lon, radius)
         
         elif subscriptionType == 'tag':
@@ -148,27 +163,29 @@ def main(configFile, subscriptionType, source):
         
         # For each of the images, update the correct event url list
         for image in media:
-            
+            print image
+            print image['dt']
             # Mod the datetime into a python dt
             try:
-                image['dt'] = datetime.datetime.strptime(image['dt'], "%Y-%m-%dT%H:%M:%S.%f")
-            except:
-                image['dt'] = datetime.datetime.strptime(image['dt'], "%Y-%m-%dT%H:%M:%S")
+                img = datetime.datetime.strptime(image['dt'], "%Y-%m-%dT%H:%M:%S.%f")
+            except Exception, e:
+                img = datetime.datetime.strptime(image['dt'], "%Y-%m-%dT%H:%M:%S")
+            image['dt'] = img    
                 
-            success = updateEvents(collHandle, aSub['objectId'], image)
+            success = updateEvents(evCollHandle, aSub['objectId'], image)
             if not success:
                 print "Failed to update event ID '%s' with media: \n %s" %(aSub['objectId'], image)
 
 
 if __name__ == '__main__':
     
-    try:
-        configFile = sys.argv[1]
-        subType    = sys.argv[2]
-        source     = sys.argv[3]
-        main(configFile, subType, source)
+    #try:
+    configFile = sys.argv[1]
+    subType    = sys.argv[2]
+    source     = sys.argv[3]
+    main(configFile, subType, source)
 
-    except:
-        print "Provide as arguments: config file path, subscription type (geography | tag) and source"
+    #except Exception, e:
+    #    print "Provide as arguments: config file path, subscription type (geography | tag) and source"
         
     

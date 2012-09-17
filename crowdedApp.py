@@ -90,6 +90,12 @@ def on_event_request():
                  'tag'    :  tag.lower()}
     
     elif lat and lon and radius:
+        
+        # Convert the incoming metres radius to degrees
+        latRad, lonRad = crowdedWorker.radialToLinearUnits(float(lat))
+        scale = (latRad+lonRad)/2.0
+        radius = float(radius)/scale
+        
         event = {'object' : 'geography',
                  'lat' : float(lat),
                  'lon' : float(lon),
@@ -201,6 +207,7 @@ def eventSplash(objectId=None):
         redirect("/noevent/%s" %(objectId)) 
         return
     
+    # Reorder the media by timestamp
     media = crowdedWorker.reorderMedia(doc['media'], 200)
 
     # Other web page elements
@@ -209,7 +216,13 @@ def eventSplash(objectId=None):
     # Get subheader
     if doc['subType']=='geography':
         loc = doc['loc']
-        subHeader = 'Event Location: lat: %s, lon: %s, radius: %skm' %(loc[1], loc[0], doc['radius']/1000.)
+        # Get the correct radius units
+        # Convert the incoming metres radius to degrees
+        latRad, lonRad = crowdedWorker.radialToLinearUnits(float(loc[1]))
+        scale = (latRad+lonRad)/2.0
+        radius = float(doc['radius'])*scale
+        
+        subHeader = 'Event Location: lat: %s, lon: %s, radius: %sm' %(loc[1], loc[0], radius)
     elif doc['subType']=='tag':
         subHeader = 'Event Tag: %s' %(objectId)
 
@@ -224,7 +237,7 @@ def eventSplash(objectId=None):
 
     # Push the arguments through the template and return the output
     output = template("renderMedia",
-                      photos         = media,
+                      photos         = media[:100],
                       header         = header,
                       subHeader      = subHeader,
                       associatedTags = associatedTags,

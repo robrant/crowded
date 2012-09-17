@@ -23,6 +23,7 @@ for root, subFolders, files in os.walk(wsDir):
 import mdb
 from baseUtils import getConfigParameters
 from instagram import InstagramAPI
+from pymongo.son import SON
 
 #///////////////////////////////////////////////////////////////////////////////////////////////
 #
@@ -46,9 +47,11 @@ def checkForExistingSubs(p, subsCollHandle, event):
     
     elif event['object']=='geography':
         
-        query = {'loc':{'$near':[event['lon'],event['lat']], '$maxDistance':event['radius']}}
-        res = subsCollHandle.find_one(query)
-        if len(res.keys) > 0:
+        query = SON({'$near':[event['lon'],event['lat']]})
+        query['$maxDistance'] = event['radius']
+        res = subsCollHandle.find_one({'loc' : query})
+        
+        if res and len(res.keys()) > 0:
             exists = {'exists':True, 'objectId':res['objectId'], 'object':event['object']}
         else:
             exists = {'exists':False}

@@ -1,6 +1,7 @@
 import os
 import sys
 import operator
+import math
 
 #============================================================================================
 # TO ENSURE ALL OF THE FILES CAN SEE ONE ANOTHER.
@@ -65,6 +66,33 @@ def getNextUrl(p, object_id):
         url = None
         
     return url
+#--------------------------------------------------------------------------------------------
+
+def radialToLinearUnits(latitude):
+    
+    ''' Calculates the length of 1 degree of latitude and longitude at
+        a given latitude. Takes as arguments the latitude being worked at.
+        Returns the length of 1 degree in metres. NEEDS TESTING '''
+    
+    # Work in radians
+    lat = math.radians(latitude)
+    
+    # Constants
+    m1 = 111132.92
+    m2 = -559.82
+    m3 = 1.175
+    m4 = -0.0023
+    p1 = 111412.84
+    p2 = -93.5
+    p3 = 0.118
+    
+    # Length of a degree in Latitude
+    latLen = m1 + (m2 * math.cos(2 * lat)) + (m3 * math.cos(4 * lat)) + \
+             (m4 * math.cos(5 * lat))
+             
+    lonLen = (p1 * math.cos(lat)) + (p2 * math.cos(3*lat)) + (p3 * math.cos(5*lat))
+        
+    return latLen, lonLen
 
 #------------------------------------------------------------------------------------------------
 
