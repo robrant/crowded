@@ -1,0 +1,38 @@
+1. 
+==
+Need to work out if there is a way of uniquely hashing the images from TFL so that they don't get repeated.
+The problem is this: when crowded goes to cams and gets the latest images, there is nothing from stopping it 
+getting the same image as previously fetched (if the image hasn't changed). Thus we get duplicate images in 
+crowded and it fills it up.
+
+Best thing is to investigate the dates being published in tfl to see whether one of the dates reflects the 
+time of last update. If it does, then bring that through in the document to crowded and maybe even use that
+as the datetime that is incorporated into the image file names. With that, you can search for it in the list
+of dicts and only populate the event document if it isn't in there.
+
+2.
+==
+Need to write a twitter broker web service that accepts a GET request from crowded, which sets up a
+hub of the subs collection. It then does its own periodic checking of that hub and polls twitter search api
+accordingly. The responses are then either polled from crowded or better still, they are POSTed into 
+crowded by the twitter
+
+3.
+==
+Check whether AH has managed to reformat his json so that it can be put into crowded.
+
+4.
+==
+Check out highways agency web cams as another source.
+
+5.
+===
+Remove integration of instagram from crowded
+
+6.
+== 
+Wordcloud for the tags coming through and then link those to the creation of new ones.
+
+7.
+==
+Map view of the geos that are getting plotted...?  

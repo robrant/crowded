@@ -203,7 +203,7 @@ def eventSplash(objectId=None):
 
     # Get the objectId
     doc = crowdedWorker.getMediaByObjectId(p, objectId)
-    if not doc or len(doc.keys())<1:
+    if not doc or len(doc.keys())<1 or 'subType' not in doc.keys():
         redirect("/noevent/%s" %(objectId)) 
         return
     

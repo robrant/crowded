@@ -1,8 +1,8 @@
 # Cron to clean up the SUBSCRIPTIONS
-1 */4 * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cleanupWorkers.py subs 24.0 >> /home/dotcloud/code/errors/cleanupSubsErrors.log 2>&1
+1 */4 * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cleanupWorkers.py subs 12.0 >> /home/dotcloud/code/errors/cleanupSubsErrors.log 2>&1
 
 # Cron to clean up the EVENTS collection, after stuff has expired
-2 */4 * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cleanupWorkers.py events 24.0 >> /home/dotcloud/code/errors/cleanupEventsErrors.log 2>&1
+2 */4 * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cleanupWorkers.py events 12.0 >> /home/dotcloud/code/errors/cleanupEventsErrors.log 2>&1
 
 # Cron to retrieve CCTV data relating to geographic events
 */2 * * * * /opt/ve/2.6/bin/python /home/dotcloud/code/worker/cctvWorker.py /home/dotcloud/code/config/crowded.cfg geography cctv >> /home/dotcloud/code/errors/cctvWorker.log 2>&1
