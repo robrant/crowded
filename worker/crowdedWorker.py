@@ -256,10 +256,8 @@ def getMediaUpdates(url):
     try:
         response = urllib2.urlopen(url)
         mediaMeta = json.loads(response.read())
-    except Exception,e:
-        print e
+    except urllib2.HTTPError:
         mediaMeta = None
-        print "Failed to open this url: \n %s" %url
         
     return mediaMeta 
 
