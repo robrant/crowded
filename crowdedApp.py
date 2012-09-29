@@ -97,11 +97,11 @@ def on_event_request():
                  'radius' : float(radius)}    
     
     else:
-        abort(400, 'Must specify tag OR lat & lon & radius.')
-
+        print 'Must specify a lat/lon/radius or tag.'
+        redirect("/help")
+        return
     
     if not event:
-        abort(400, 'Failed to build event for subscription worker.')
         response = {'success': False}
     # Get the response form updating the backend records
     else:

@@ -256,7 +256,8 @@ def getMediaUpdates(url):
     try:
         response = urllib2.urlopen(url)
         mediaMeta = json.loads(response.read())
-    except:
+    except Exception,e:
+        print e
         mediaMeta = None
         print "Failed to open this url: \n %s" %url
         
@@ -385,6 +386,8 @@ def main(p, response):
         
         # Get the media that has changed since the last time
         mediaMeta = getMediaUpdates(url)    
+        if not mediaMeta:
+            return
         
         # Find the pagination info and save out info that concerning next url for this subscription
         handleMediaPagination(p, url, objectId, mediaMeta)
