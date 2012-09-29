@@ -36,9 +36,10 @@ def checkForExistingSubs(p, subsCollHandle, event):
     # Check for tag subscriptions of this value already in existence
     if event['object']=='tag':
         res = subsCollHandle.find_one({'objectId':event['tag']})
+        print 'Res', res
         if res and res.has_key('objectId'):
             exists = {'exists':True,'objectId':res['objectId'], 'object':event['object']}
-            subsCollHandle.update({'objectId':event['tag']}, {'start':datetime.datetime.utcnow()})
+            subsCollHandle.update({'objectId':event['tag']}, {'start':datetime.datetime.utcnow()}, upsert=True, multi=True)
 
         else:
             exists = {'exists':False}
