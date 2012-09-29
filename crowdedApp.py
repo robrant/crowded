@@ -75,15 +75,10 @@ def on_event_request():
 
     # Does the user want a linked outpage to make it easier to link to?
     htmlPage = bool(request.query.html)
-    print htmlPage
-    
     event = None
     
     tag    = request.query.tag
     lat, lon, radius = subscriptionWorker.checkGeos(request.query.lat, request.query.lon, request.query.radius)
-    
-    print "Tag", tag
-    print lat, lon, radius
     
     if tag and len(tag) > 0:
         event = {'object' : 'tag',
@@ -97,8 +92,8 @@ def on_event_request():
         radius = float(radius)/scale
         
         event = {'object' : 'geography',
-                 'lat' : float(lat),
-                 'lon' : float(lon),
+                 'lat'    : float(lat),
+                 'lon'    : float(lon),
                  'radius' : float(radius)}    
     
     else:
@@ -237,7 +232,7 @@ def eventSplash(objectId=None):
 
     # Push the arguments through the template and return the output
     output = template("renderMedia",
-                      photos         = media[:100],
+                      photos         = media,
                       header         = header,
                       subHeader      = subHeader,
                       associatedTags = associatedTags,

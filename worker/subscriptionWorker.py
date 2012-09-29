@@ -38,12 +38,10 @@ def checkForExistingSubs(p, subsCollHandle, event):
         res = subsCollHandle.find_one({'objectId':event['tag']})
         if res and res.has_key('objectId'):
             exists = {'exists':True,'objectId':res['objectId'], 'object':event['object']}
+            subsCollHandle.update({'objectId':event['tag']}, {'start':datetime.datetime.utcnow()})
+
         else:
             exists = {'exists':False}
-
-        # Do the update
-        subsCollHandle.update({'objectId':event['tag']},
-                              {'start'   :datetime.datetime.utcnow()})
     
     elif event['object']=='geography':
         
@@ -107,12 +105,12 @@ def updateSubs(subsCollHandle, subType, subId, objectId, aspect, event, user, pr
         doc['loc'] = [event['lon'], event['lat']]
         doc['radius'] = event['radius']
     
-    print "Subscription document to be inserted:"
-    print doc
+    #print "Subscription document to be inserted:"
+    #print doc
     
     # Insert the new record of a subscription
     _id = subsCollHandle.insert(doc)
-    print "ID of successfully inserted subscription doc: %s" %_id
+    #print "ID of successfully inserted subscription doc: %s" %_id
     
     if _id:
         return objectId
@@ -128,8 +126,8 @@ def buildEventPlaceholder(evCollHandle, subType, event, objectId, protect=None):
            "tags"     : {},
            "media"    : []}
 
-    print "Event placeholder."
-    print doc
+    #print "Event placeholder."
+    #print doc
 
     # Sparse field only used where it is true
     if protect==True:
@@ -140,7 +138,7 @@ def buildEventPlaceholder(evCollHandle, subType, event, objectId, protect=None):
         doc["radius"] = event['radius']
 
     _id = evCollHandle.insert(doc)
-    print "Id of successfully inserted event placeholder %s" %_id
+    #print "Id of successfully inserted event placeholder %s" %_id
 
     return _id
 
@@ -156,7 +154,7 @@ def buildSubscription(event):
     cfgs = os.path.join(cwd, 'config/crowded.cfg')
     p = getConfigParameters(cfgs)
 
-    print "Config Filepath in buildSubscription: ", cfgs
+    #print "Config Filepath in buildSubscription: ", cfgs
 
     # The mongo bits
     c, dbh = mdb.getHandle(host=p.dbHost, port=p.dbPort, db=p.db, user=p.dbUser, password=p.dbPassword)
@@ -183,6 +181,7 @@ def buildSubscription(event):
             print "Tag Subscription setup: %s" %res
         # Just in case
         else:
+            print 'Didnt setup a subscription' 
             res = None
     
         # Update the subscription collection 
@@ -206,6 +205,10 @@ def buildSubscription(event):
             
         # Something failed in the subscription build...?
         else:
+            print '='*40
+            print 'Failed here. No event placeholder or subscription updated.'
+            print res
+            print '='*40
             response = {'success'  : False,
                         'objectId' : checked['objectId'],
                         'object'   : checked['object'],
@@ -217,8 +220,6 @@ def buildSubscription(event):
                     'objectId' : checked['objectId'],
                     'object'   : checked['object'],
                     'url'      : "%s/%s" %(p.baseUrl, checked['objectId'])}
-
-    print "The response: ", response
 
     # Close the connection/handle
     mdb.close(c, dbh)
