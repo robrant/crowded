@@ -64,7 +64,7 @@ def hitUrl(url):
 
 #------------------------------------------------------------------------------------------ 
 def queryByGeo(url, lat, lon, radius):
-    ''' Queries the subs collection for active subscriptions '''
+    ''' Queries the remote service by geographical parameters. '''
 
     # Scale the radius back to metres     
     latScale, lonScale = crowdedWorker.radialToLinearUnits(float(lat))
@@ -106,15 +106,26 @@ def queryByTag(p, url, tag):
 def updateEvents(collHandle, objectId, image):
     ''' Updates the media list in the events collection. '''
     
-    filter = {'objectId':objectId}
+    # Query the collection first - does the media already exist in the collection.
+    # Based simply on the standard resolution image
+    # This compliments the byte-based check done in cams app
+    filter = {'media.standard_resolution': image['standard_resolution'],
+              'objectId' : objectId}
     
-    try:
-        update = {'$push':{'media':image}}
-        collHandle.update(filter, update, upsert=True)
-        success = 1
-    except Exception, e:
-        print e
-        success = None
+    exists = collHandle.find(filter).count()
+    if exists > 0:
+        success = 0
+
+    else:
+        try:
+            # Establish the where clause
+            filter = {'objectId':objectId}
+            update = {'$push':{'media':image}}
+            collHandle.update(filter, update, upsert=True)
+            success = 1
+        except Exception, e:
+            print e
+            success = None
     
     return success
           
@@ -148,7 +159,7 @@ def main(configFile, subscriptionType, source):
         mdb.close(c, dbh)
         return None
 
-    # For each active active subscription, query by geograph
+    # For each active active subscription, query by geography
     for aSub in activeSubs:
         
         print 'ASUB:', aSub
@@ -163,17 +174,15 @@ def main(configFile, subscriptionType, source):
         
         # For each of the images, update the correct event url list
         for image in media:
-            print image
-            print image['dt']
             # Mod the datetime into a python dt
             try:
-                img = datetime.datetime.strptime(image['dt'], "%Y-%m-%dT%H:%M:%S.%f")
+                img = datetime.datetime.strptime(image['captured'], "%Y-%m-%dT%H:%M:%S")
             except Exception, e:
-                img = datetime.datetime.strptime(image['dt'], "%Y-%m-%dT%H:%M:%S")
+                img = datetime.datetime.strptime(image['published'], "%Y-%m-%dT%H:%M:%S")
             image['dt'] = img    
-                
+            
             success = updateEvents(evCollHandle, aSub['objectId'], image)
-            if not success:
+            if success == None:
                 print "Failed to update event ID '%s' with media: \n %s" %(aSub['objectId'], image)
 
 

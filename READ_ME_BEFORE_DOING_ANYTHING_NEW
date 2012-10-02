@@ -10,6 +10,9 @@ time of last update. If it does, then bring that through in the document to crow
 as the datetime that is incorporated into the image file names. With that, you can search for it in the list
 of dicts and only populate the event document if it isn't in there.
 
+***** DONE ******
+****** AND MODIFICATIONS SO THAT IT WORKS WITH TFL VERSION 2.0 ******
+
 2.
 ==
 Need to write a twitter broker web service that accepts a GET request from crowded, which sets up a
@@ -24,6 +27,7 @@ Check whether AH has managed to reformat his json so that it can be put into cro
 4.
 ==
 Check out highways agency web cams as another source.
+http://www.webcams.travel/developers/api/wct.webcams.get_details + signed up and waiting for an account with webcams.travel - google.
 
 5.
 ===
@@ -35,4 +39,8 @@ Wordcloud for the tags coming through and then link those to the creation of new
 
 7.
 ==
-Map view of the geos that are getting plotted...?  
+Map view of the geos that are getting plotted...?
+
+8. 
+==
+Change the format output from a list to a {data: []} output
