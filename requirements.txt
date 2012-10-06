@@ -1,3 +1,3 @@
 bottle
-pymongo
+pymongo==1.10.1
 python-instagram

@@ -26,8 +26,10 @@ import urllib2
 from pymongo import DESCENDING
 #import jmsCode                      # JMS STOMP connection wrapper - needs stomp.py
 import datetime
+import time
 import mdb
 import re
+import copy
 
 #///////////////////////////////////////////////////////////////////////////////////////////////
 #
@@ -207,52 +209,82 @@ def updateTags(evCollHandle, objectId, metadata):
     
 #------------------------------------------------------------------------------------------------
 
-def updateImageUrls(evCollHandle, objectId, metadata):
+def updateImageUrls(evCollHandle, objectId, metadata, dt):
     ''' Updates the urls on file against this tag or location. '''
     
+    imageOut = {'dt':dt,
+                'source':'instagram'}
     res = 1
     
-    imageOut = {}
     # The query to find the correct event document
-    filter = {'objectId':objectId}
-    
+    filter = {'objectId': objectId}
+        
     # Get the image urls (they take a 
     images = metadata['images']
     for image in images.keys():
         imageOut[image] = images[image]['url']
-    
-    # Append the datetime information
-    #dt = datetime.datetime.fromtimestamp(float(metadata['created_time']))
-    #imageOut['dt'] = dt.strftime('%H:%M:%SZ on %a %d %b %Y')
-    try:
-        imageOut['dt']= datetime.datetime.fromtimestamp(float(metadata['created_time']))
-    except:
-        imageOut['dt']= datetime.datetime.utcnow()
-        imageOut['dt_est'] = True
         
-    # Put a source on it for further filtering
-    imageOut['source'] = 'instagram'
-    
     # Append the caption for this image
     try:
         imageOut['caption'] = metadata['caption']['text']
-    except:
+    except Exception, e:
+        print e
         imageOut['caption'] = "** caption text not parsed **"
     # Conduct the update
     try:
         update = {'$push':{'media':imageOut}}
+        print "Filter:", filter
+        print "Update:", update
         evCollHandle.update(filter, update, upsert=True)
     except Exception, e:
         print e
-        res = 1
-    
+        res = 0
+
     return res
+
+#------------------------------------------------------------------------------------------------
+
+def updateLatestInfo(evCollHandle, objectId, latest):
+    ''' Updates the document with the latest image time.'''
+    
+    print "THE LATEST GOING IN: %s" %(latest)
+    
+    # The query to find the correct event document
+    filter = {'objectId': objectId}
+    update = {'$set'  : {'latest': latest}}    
+    
+    try:
+        evCollHandle.update(filter, update, upsert=True)
+    except Exception, e:
+        print e
+        print "Failed to update the 'latest' field with '%s'" %latest
+        
+#------------------------------------------------------------------------------------------------
+
+def retrieveLatestImage(evCollHandle, objectId):
+    ''' Gets the time of the last image in the doc'''
+    
+    # Get the most recent time for this document
+    try:
+        doc    = evCollHandle.find_one({'objectId':objectId})
+        latest = doc['latest']
+    except Exception, e:
+        print '_-'*40
+        print e
+        print '_-'*40
+        latest = None
+
+    return latest
 
 #------------------------------------------------------------------------------------------------
 
 def getMediaUpdates(url):
     ''' Reads and parses the subscription updates'''
   
+    print "="*40
+    print url
+    print "="*40
+
     try:
         response = urllib2.urlopen(url)
         mediaMeta = json.loads(response.read())
@@ -330,9 +362,9 @@ def buildUrl(p, obj, objectId):
 def reorderMedia(media, limit=None):
     ''' Reorders the media by its date time field. '''
 
-    outMedia = newlist = sorted(media, key=itemgetter('dt'), reverse=True) 
-    if limit and limit < len(outMedia):
-        media = outMedia[:limit]
+    media.sort(key=itemgetter('dt'), reverse=True) 
+    if limit and limit < len(media):
+        media = media[:limit]
 
     return media
 
@@ -362,39 +394,78 @@ def getMediaByObjectId(p, objectId):
 
 def main(p, response):
     '''Handles the subscription updates, including making the call to the endpoint and dumping to jms/text.'''
-
+    import time
+    
+    print datetime.datetime.utcnow(), 'in main'
+    
     # The mongo bits
     c, dbh = mdb.getHandle(host=p.dbHost, port=p.dbPort, db=p.db, user=p.dbUser, password=p.dbPassword)
     evCollHandle = dbh[p.eventsCollection]
-
+    
+    
     # Accepts a list of dictionaries - the update message
     updates = json.loads(response)
 
+    print datetime.datetime.utcnow(), 'loaded'
+    print "Length of Updates", len(updates)
+    
     # Format the url and get the media metadata
     for upd in updates:
         
         objectId = upd['object_id']
         objectType =  upd['object']
         # Does the next URL already exist for this object?
-        url = getNextUrl(p, objectId)
+        #url = getNextUrl(p, objectId)
         
         # If the next (ie this) url hasn't been written to a file, build it from the config file 
-        if url == None:
-            url = buildUrl(p, objectType, objectId)
+        #if url == None or len(url) < 1:
+        url = buildUrl(p, objectType, objectId)
         
         # Get the media that has changed since the last time
         mediaMeta = getMediaUpdates(url)    
-        if not mediaMeta:
-            return
         
         # Find the pagination info and save out info that concerning next url for this subscription
-        handleMediaPagination(p, url, objectId, mediaMeta)
+        #handleMediaPagination(p, url, objectId, mediaMeta)
 
+        # Get the last insert time
+        lastUpdated = retrieveLatestImage(evCollHandle, objectId)
+        latest      = time.mktime(lastUpdated.timetuple())
+        newLatest   = time.mktime(lastUpdated.timetuple())
+
+        print "LATEST TIME FOR THIS UPDATE: %s" %(latest)
+        print "NEW LATEST TIME FOR THIS UPDATE: %s" %(newLatest)
+        
         # Update the tags and urls arrays
-        if mediaMeta.has_key('data'):
+        if mediaMeta and mediaMeta.has_key('data'):
+            print "Number of Images:", len(mediaMeta['data'])
             for photo in mediaMeta['data']:
                 
-                res = updateImageUrls(evCollHandle, objectId, photo)
-                res = updateTags(evCollHandle, objectId, photo)
+                # Append the datetime information
+                #dt = datetime.datetime.fromtimestamp(float(metadata['created_time']))
+                #imageOut['dt'] = dt.strftime('%H:%M:%SZ on %a %d %b %Y')
+                try:
+                    epochTime = float(photo['created_time'])
+                    dt = datetime.datetime.fromtimestamp(epochTime)
+                    print "EpochTime, dt:", epochTime, dt
+                except Exception, e:
+                    print e
+                
+                # For recent images
+                if epochTime > latest:
+                    # Update the list of images stored
+                    res = updateImageUrls(evCollHandle, objectId, photo, dt)
+                    # Update the tag information
+                    res = updateTags(evCollHandle, objectId, photo)
+                
+                # Get the latest image datetime
+                if epochTime > newLatest:
+                    print "improving newLatest", epochTime, newLatest
+                    newLatest = epochTime
             
-         
+            # Update the latest datetime on record
+            updateTimeStamp = datetime.datetime.fromtimestamp(newLatest)
+            updateLatestInfo(evCollHandle, objectId, updateTimeStamp)
+                
+        print datetime.datetime.utcnow(), 'inside processing each update'
+
+    print "*"*60

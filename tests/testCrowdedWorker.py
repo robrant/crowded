@@ -26,10 +26,12 @@ for root, subFolders, files in os.walk(wsDir):
 #============================================================================================
 import crowdedWorker
 from baseUtils import getConfigParameters
+import datetime
+from random import randint
 
 class Test(unittest.TestCase):
 
-
+    """
     def testGetTopTags(self):
         ''' Checks that we're getting the right tags'''
         
@@ -74,7 +76,47 @@ class Test(unittest.TestCase):
         outTags = crowdedWorker.popUselessTags(p, inTags)
         print len(outTags)
         
+        
+        
         self.assertEquals(len(outTags), 1194)
+    
+    def testReorderMedia(self):
+        ''' Re-orders the media provided - no limit.'''
+        
+        media = []
+        
+        for i in range(10):
+            image = {'dt' : datetime.datetime.utcnow() + datetime.timedelta(seconds=randint(0,300)),
+                     'caption': 'caption %s' %i,
+                     "low_resolution":"http://distilleryimage4.s3.amazonaws.com/0a3e189a0d1911e289de22000a1cf722_6.jpg",
+                     "standard_resolution":"http://distilleryimage4.s3.amazonaws.com/0a3e189a0d1911e289de22000a1cf722_7.jpg",
+                     "source":"instagram",
+                     "thumbnail":"http://distilleryimage4.s3.amazonaws.com/0a3e189a0d1911e289de22000a1cf722_5.jpg"}
+            media.append(image)
+        
+        outMedia = crowdedWorker.reorderMedia(media)
+        for me in outMedia:
+            print me['dt']
+    """
+
+    def testReorderMedia(self):
+        ''' Re-orders the media provided - with limit.'''
+        
+        media = []
+        
+        for i in range(100):
+            image = {'dt' : datetime.datetime.utcnow() + datetime.timedelta(seconds=randint(0,300)),
+                     'caption': 'caption %s' %i,
+                     "low_resolution":"http://distilleryimage4.s3.amazonaws.com/0a3e189a0d1911e289de22000a1cf722_6.jpg",
+                     "standard_resolution":"http://distilleryimage4.s3.amazonaws.com/0a3e189a0d1911e289de22000a1cf722_7.jpg",
+                     "source":"instagram",
+                     "thumbnail":"http://distilleryimage4.s3.amazonaws.com/0a3e189a0d1911e289de22000a1cf722_5.jpg"}
+            media.append(image)
+        
+        outMedia = crowdedWorker.reorderMedia(media, 10)
+        for me in outMedia:
+            print me['dt']
+                
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testGetTopTags']

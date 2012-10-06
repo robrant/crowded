@@ -1,3 +1,4 @@
 crowded.cfg
 dev.py
 *.pyc
+*.key

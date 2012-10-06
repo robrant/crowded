@@ -121,9 +121,13 @@ def updateSubs(subsCollHandle, subType, subId, objectId, aspect, event, user, pr
 def buildEventPlaceholder(evCollHandle, subType, event, objectId, protect=None):
     ''' Builds a new EVENT Document as a placeholder so all other events can be UPDATEs.'''
 
+    # The back catalogue of images you want in the splash page - seconds worth of data
+    lookback = datetime.timedelta(seconds=43200)
+    
     doc = {"objectId" : objectId,
            "subType"  : subType,
            "start"    : datetime.datetime.utcnow(),
+           "latest"   : datetime.datetime.utcnow() - lookback,
            "tags"     : {},
            "media"    : []}
 
