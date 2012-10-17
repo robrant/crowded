@@ -2,6 +2,8 @@ import os
 import sys
 import bottle
 import json
+import logging
+
 from bottle import route, post, run, request, static_file, template, redirect
 #from instagram import client, subscriptions
 
@@ -27,37 +29,43 @@ import datetime
 from baseUtils import getConfigParameters
 import crowdedWorker
 import subscriptionWorker
-
+import mdb
 bottle.debug(True)
 
 #///////////////////////////////////////////////////////////////////////////////////////////////
 #
-# Bottle (python micro-framework) based web application for interacting with the instagram API.
+# Crowded:
+# ========
 # 
-# A web server is needed for instagrams pubsubhubub - based API. It is needed for the setting up
-# of subscriptions (this app responds to say that the subscription is authorised). It is also 
-# needed to receive update POSTs from the Instgram Publisher. The updates are small json payloads
-# that notify this app that something matching the subscription has changed. The updates do not
-# contain the media or the media metadata. 
-#
-# This app, upon receipt of an update POST, passes the payload to igramSubscrption(.py) which
-# reads the update and hits the relevant API search endpoint to retrieve the recently changed
-# media metadata.
-#
-# This app doesn't include any calls for authorising other applications or users. It just handles
-# the updates and subscription authorisation. An update payload looks like this:-
-#
-# [{"changed_aspect": "media", "subscription_id": 2229309, "object": "tag", "object_id": "olympics2012", "time": 1345065662}]
-# 
-# Note, its a list so you have multiple updates in a single payload - the code is written to handle that.
+# Description:
+# ------------
+# - Provides a crowd sourced perspective of events as they happen through a single gallery splash page
+# - Does so through wsgi (in your web server of choice)
+# - This module provides the url-routing functions.
 #
 #
+# To do:
+# -----
+# - Is it possible to support multiple wsgi files for a single application?
+# - If so, break out the admin functions.
+# - Look into using twisted as the framework or web server so that it is FAST to receive the POSTs
+#   from external sources
+#   Extract the instagram bits from this code.
+
+
 #///////////////////////////////////////////////////////////////////////////////////////////////
 
 os.chdir('/home/dotcloud/current/')
 cwd = os.getcwd()
 cfgs = os.path.join(cwd, 'config/crowded.cfg')
 p = getConfigParameters(cfgs)
+
+# The mongo bits
+c, dbh = mdb.getHandle(host=p.dbHost, port=p.dbPort, db=p.db, user=p.dbUser, password=p.dbPassword)
+evCollHandle = dbh[p.eventsCollection] 
+
+logFile = os.path.join(p.errorPath, p.errorFile)
+logging.basicConfig(filename=logFile, format='%(levelname)s:: \t%(asctime)s %(message)s', level='DEBUG')
 
 #------------------------------------------------------------------------------------------------
 
@@ -68,6 +76,47 @@ def on_error(errFile='errors.txt', message=None):
     f.write(message + '\n')
     f.close()
 
+#------------------------------------------------------------------------------------------------
+@route('/list_events')
+@route('/manage_events')
+@route('/events')
+@route('/events/')
+
+def listEvents():
+    ''' List all events in the db. '''
+    
+    htmlPage = bool(request.query.html)
+    
+    # Perform management function
+    events = crowdedWorker.getEvents(p)
+    for event in events:
+        
+        if event.has_key('start') == False:
+            continue
+        event['start'] = event['start'].isoformat()
+    
+    # If the user wants it rendered to a page
+    if htmlPage == True:
+        # Split up the geo from the tag-based events
+        geoEvents = crowdedWorker.copyf(events, 'subType', ['geography'])
+        tagEvents = crowdedWorker.copyf(events, 'subType', ['tag'])
+
+        # Reformat some of the geo info
+        for geo in geoEvents:
+            geo['loc'][0] = str(geo['loc'][0])[:6]
+            geo['loc'][1] = str(geo['loc'][1])[:6]
+            geo['radius'] = str(geo['radius'])[:7]
+                
+        output = template("listEvents",
+                          geoEvents=geoEvents,
+                          tagEvents=tagEvents)
+    
+    else:
+        safeResponse = {'data':events, 'meta':200}
+        output = json.dumps(safeResponse)
+        
+    return output
+        
 #------------------------------------------------------------------------------------------------
 
 @route('/event')
@@ -240,14 +289,36 @@ def eventSplash(objectId=None):
                       initiated      = initiated)
     
     return output
+        
+#------------------------------------------------------------------------------------------------
+
+@route('/contribute', method='POST')
+def contributePOST():
+    ''' Takes in POST payload, checks it and then adds it to the relevant event doc. '''
+
+    data = request.body.read()
+    if not data:
+        response = {'meta':400, 'reason':'no data provided'}
+        return response
     
-    """
-    SUCCESSFULLY CREATED A TAG SUBSCRIPTION
-    NEED TO CHECK THE GEO SUBSCRIPTION - DOES THAT WORK OK? - print statements in the @route above to check this
-    comment this, then re-push.
-    NEED TO CHECK THE DELETING OF SUBSCRIPTIONS USING THE CLEANUP FUNCTIONS
-    NEED TO SEE WHETHER SUBSCRIPTION UPDATES ARE COMING INTO THE MONGO
-    NEED TO CHECK WHETHER THE INTERFACE IS WORKING CORRECTLY
-    """
+    mediaUpdates = json.loads(data)
     
+    newMedia = {}
+    # Loop to check the media being posted in
+    for media in mediaUpdates['data']:
+        valid, objectId, validMedia, tags = crowdedWorker.validMediaCheck(p, media)
+        
+        if valid == False:
+            response = {'meta' : {'code':400}}
+            return json.dumps(response)
+        else:
+            newMedia[str(objectId)] = validMedia
+    
+    # Loop to insert it into mongo
+    for objectId in newMedia.keys():
+        success = crowdedWorker.updateEventMedia(evCollHandle, objectId, newMedia[objectId], tags)
+        if success == 0:
+            response = {'meta'  : {'code':400}, 'reasons' : 'Failed to update media collection for object: %s' %(objectId)}
+        else:
+            response = {'meta' : {'code':200}}
     

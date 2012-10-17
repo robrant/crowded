@@ -2,6 +2,14 @@ import os
 import sys
 import operator
 import math
+import time
+from operator import itemgetter
+import json
+import urllib2
+import datetime
+import re
+import logging
+ 
 
 #============================================================================================
 # TO ENSURE ALL OF THE FILES CAN SEE ONE ANOTHER.
@@ -20,39 +28,16 @@ for root, subFolders, files in os.walk(wsDir):
                 sys.path.append(directory)
 
 #============================================================================================
-from operator import itemgetter
-import json
-import urllib2
 from pymongo import DESCENDING
-#import jmsCode                      # JMS STOMP connection wrapper - needs stomp.py
-import datetime
-import time
 import mdb
-import re
-import copy
 
 #///////////////////////////////////////////////////////////////////////////////////////////////
 #
-# Set of functions to handle the update payload from an instagram subscription update POST. 
-#
-# The main() seems a bit convoluted, but it handles the possibility of multiple updates in a 
-# single POST. And then it handles each media item (photo) returned from the GET call the the
-# relevant search endpoint.
-# 
-# It also handles the recording of the next URL, so that each call only gets the most recent
-# content that has not been retrieved before. It does that by retrieving either a 'min_id' (in the
-# case of the geography) or a 'next_url' (in the case of a tag) and storing this for the next time.
-#
-# The next URL (from geog and from tag) is stored in a text file named according to the object_id
-# for the subscription in the /config directory. The code attempts to open this for every update
-# and read the next url. If it can't, it just proceeds in getting all that is available.
-#
-# Media metadata is either put out over JMS (not tested yet) or dumped straight to a file as JSON.
-#
-# If on dotcloud, check /var/log/supervisor/uwsgi.log for any print outs/errors.
-# Also, note that if deploying on dotcloud you will need a custom build to ensure nginx can 
-# accept big enough POST payloads.
-#
+# Remove instagram specific code from here.
+# 1 file to contain the management functions for the site - listing current events, destroying events, etc
+# 1 file to contain the splash page functions (retrieve all, retrieve secific, etc
+# write tests for all possible
+#    
 #
 #///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -233,8 +218,8 @@ def updateImageUrls(evCollHandle, objectId, metadata, dt):
     # Conduct the update
     try:
         update = {'$push':{'media':imageOut}}
-        print "Filter:", filter
-        print "Update:", update
+        #print "Filter:", filter
+        #print "Update:", update
         evCollHandle.update(filter, update, upsert=True)
     except Exception, e:
         print e
@@ -246,8 +231,6 @@ def updateImageUrls(evCollHandle, objectId, metadata, dt):
 
 def updateLatestInfo(evCollHandle, objectId, latest):
     ''' Updates the document with the latest image time.'''
-    
-    print "THE LATEST GOING IN: %s" %(latest)
     
     # The query to find the correct event document
     filter = {'objectId': objectId}
@@ -280,10 +263,6 @@ def retrieveLatestImage(evCollHandle, objectId):
 
 def getMediaUpdates(url):
     ''' Reads and parses the subscription updates'''
-  
-    print "="*40
-    print url
-    print "="*40
 
     try:
         response = urllib2.urlopen(url)
@@ -392,23 +371,135 @@ def getMediaByObjectId(p, objectId):
 
 #------------------------------------------------------------------------------------------------
 
+def copyf(dictList, key, valueList):
+    ''' Returns a filtered list of dictionaries'''
+    
+    if not dictList or not key or not valueList:
+        out = []
+    else:
+        out = [dictio for dictio in dictList if dictio[key] in valueList]
+    return out
+
+#------------------------------------------------------------------------------------------------
+
+def getEvents(p):
+    ''' Returns all currently active events in mongo '''
+    
+    # The mongo bits
+    c, dbh = mdb.getHandle(host=p.dbHost, port=p.dbPort, db=p.db, user=p.dbUser, password=p.dbPassword)
+    evCollHandle = dbh[p.eventsCollection]  
+    
+    try:
+        docs = evCollHandle.find(fields=['objectId','subType','start','loc','radius'])
+        docsOut = [d for d in docs]
+        
+    except:
+        print "No documents matched your query. Object ID: %s." %objectId
+        docsOut = []
+    mdb.close(c, dbh)
+    
+    # Additional fields that might be useful
+    for doc in docsOut:
+        # Get rid of the mongo ID
+        _id = doc.pop('_id')
+        
+        if doc.has_key('loc'):
+            
+            # calculate the radius in metres
+            latScale, lonScale = radialToLinearUnits(float(doc['loc'][1]))
+            scale = (latScale + lonScale)/2.0
+            doc['radius_m'] = int(doc['radius'] * scale)
+        
+            # Calculate the top left, bottom right
+            s = doc['loc'][1] - doc['radius']
+            w = doc['loc'][0] - doc['radius']
+            n = doc['loc'][1] + doc['radius']
+            e = doc['loc'][0] + doc['radius']
+            doc['bbox'] = [[w,s],[e,n]]
+                         
+    return docsOut
+
+#------------------------------------------------------------------------------------------------
+    
+def validMediaCheck(p, media):
+    ''' For POST functions, checks that the media json is valid and good to be inserted'''
+
+    newMedia = {} 
+    valid = True
+    # Check that the objectId exists in mongo
+    try:
+        objectId = media.pop('objectId')
+    except:
+        valid = False
+        objectId = None
+        logging.error("Failed to get the objectId from the incoming POST payload\n %s" %(media), exc_info=True)
+    # Extract the tags
+    try:
+        tags = media.pop('tags')
+    except:
+        valid = False
+        tags = None
+        logging.error("Failed to get tags from incoming POST payload\n %s" %(media), exc_info=True)
+    
+    # Check all of the other fields are present
+    for fld in p.mediaFlds:
+        if fld in media.keys():
+            newMedia[fld] = media[fld]
+        else:
+            logging.warning('payload json does not contain field: %s.' %(fld))
+
+    # Format the dt info into a datetime
+    try:
+        newMedia['dt'] = datetime.datetime.strptime(newMedia['dt'], "%Y-%m-%dT%H:%M:%S")
+    except:
+        valid = False
+        logging.warning('Failed to process datetime: %s' %(newMedia['dt']))
+
+    return valid, objectId, newMedia, tags
+    
+#------------------------------------------------------------------------------------------------
+
+def updateEventMedia(evCollHandle, objectId, media, tags):
+    ''' Pushes the new media item into the mongo collection. '''
+
+    res = 1
+    
+    # The query to find the correct event document
+    filter = {'objectId': objectId}
+    doc = evCollHandle.find_one(filter)
+    if doc or doc.has_key('media'):
+            
+        # Update the media
+        try:
+            update = {'$push':{'media':media}}
+            evCollHandle.update(filter, update)
+        except:
+            logging.error('Failed to push new media: %s' %(media), exc_info=True)
+            res = 0
+            
+        # Update the tag information
+        try:
+            res = updateTags(evCollHandle, objectId, {'tags':tags})
+        except:
+            logging.error('Failed to updates tags: %s' %(tags), exc_info=True)
+            res = 0
+    else:
+        res = -1
+        
+    return res
+
+#------------------------------------------------------------------------------------------------
+
 def main(p, response):
     '''Handles the subscription updates, including making the call to the endpoint and dumping to jms/text.'''
-    import time
-    
-    print datetime.datetime.utcnow(), 'in main'
     
     # The mongo bits
     c, dbh = mdb.getHandle(host=p.dbHost, port=p.dbPort, db=p.db, user=p.dbUser, password=p.dbPassword)
     evCollHandle = dbh[p.eventsCollection]
     
-    
     # Accepts a list of dictionaries - the update message
     updates = json.loads(response)
 
-    print datetime.datetime.utcnow(), 'loaded'
-    print "Length of Updates", len(updates)
-    
     # Format the url and get the media metadata
     for upd in updates:
         
@@ -432,21 +523,15 @@ def main(p, response):
         latest      = time.mktime(lastUpdated.timetuple())
         newLatest   = time.mktime(lastUpdated.timetuple())
 
-        print "LATEST TIME FOR THIS UPDATE: %s" %(latest)
-        print "NEW LATEST TIME FOR THIS UPDATE: %s" %(newLatest)
-        
         # Update the tags and urls arrays
         if mediaMeta and mediaMeta.has_key('data'):
-            print "Number of Images:", len(mediaMeta['data'])
+            #print "Number of Images:", len(mediaMeta['data'])
             for photo in mediaMeta['data']:
                 
                 # Append the datetime information
-                #dt = datetime.datetime.fromtimestamp(float(metadata['created_time']))
-                #imageOut['dt'] = dt.strftime('%H:%M:%SZ on %a %d %b %Y')
                 try:
                     epochTime = float(photo['created_time'])
                     dt = datetime.datetime.fromtimestamp(epochTime)
-                    print "EpochTime, dt:", epochTime, dt
                 except Exception, e:
                     print e
                 
@@ -459,13 +544,9 @@ def main(p, response):
                 
                 # Get the latest image datetime
                 if epochTime > newLatest:
-                    print "improving newLatest", epochTime, newLatest
+                    #print "improving newLatest", epochTime, newLatest
                     newLatest = epochTime
             
             # Update the latest datetime on record
             updateTimeStamp = datetime.datetime.fromtimestamp(newLatest)
             updateLatestInfo(evCollHandle, objectId, updateTimeStamp)
-                
-        print datetime.datetime.utcnow(), 'inside processing each update'
-
-    print "*"*60

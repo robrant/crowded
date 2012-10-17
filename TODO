@@ -1,0 +1,39 @@
+1. Add pagination into the instagram code.
+
+2.
+==
+Remove instagram and hold as a separate service. Based on the 
+architecture to be used - POST for streaming. GET for polled?
+- develop pagination stuff.
+- more elegantly acquire the data.
+
+3.
+==
+http://www.webcams.travel/developers/api/wct.webcams.get_details
+Signed up and waiting for an account with webcams.travel - google.
+Do they have a geospatial API?
+
+4.
+==
+Expand the remit. What other contextual info would be useful?
+a. The tweets themselves? - DYNAMIC
+b. What is nearby? - foursquares geo api, wikipedia geo API, infochimps api? - RELATIVELY STATIC AND MAP BASED
+c. Who is nearby? - tweets, instagram users, check ins on four squares for witnesses, etc. - DYNAMIC
+d. cell towers - open cell ID  - RELATIVELY STATIC AND MAP BASED
+e. Maps - google, satellite, open street map - See keynotes slides.
+
+5.
+==
+Agree on standards for json exchange
+
+6. 
+Remove unsafe json lists from services
+
+7. Add authentication - maybe in move to Django
+
+8. ERROR LOGGING!
+
+9. Ability for users to remove images - from the total queue or just from theirs?
+   Probably best to remove them from the total queue - present a filtered and non-fitlered page
+   Button next to the main image that they can click, which adds a 'vetted' boolean
+   to the media document. 

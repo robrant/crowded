@@ -8,6 +8,7 @@ For each of these...
 """
 import sys
 import os
+import logging
 #============================================================================================
 # TO ENSURE ALL OF THE FILES CAN SEE ONE ANOTHER.
 
@@ -121,7 +122,7 @@ def updateEvents(collHandle, objectId, image):
             # Establish the where clause
             filter = {'objectId':objectId}
             update = {'$push':{'media':image}}
-            collHandle.update(filter, update, upsert=True)
+            collHandle.update(filter, update)
             success = 1
         except Exception, e:
             print e

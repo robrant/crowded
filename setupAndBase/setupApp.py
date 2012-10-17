@@ -1,5 +1,7 @@
 import os
 import sys
+import logging
+import subprocess
 
 #============================================================================================
 # TO ENSURE ALL OF THE FILES CAN SEE ONE ANOTHER.
@@ -20,7 +22,7 @@ for root, subFolders, files in os.walk(wsDir):
 
 import configureDatabase
 import setupDatabase
-import cleanupAllSubs
+import baseUtils
 
 # Get the config file
 configFile = sys.argv[1]
@@ -28,19 +30,27 @@ configFile = sys.argv[1]
 # Where this is being run - 
 site = sys.argv[2]
 
-# Clean the instagram subscriptions on their server
-print '----> Cleaning all existing subscriptions on instagram.'
-cleanupAllSubs.main(configFile)
+p = baseUtils.getConfigParameters(configFile)
+
+# Setup the error logging
+logFile = os.path.join(p.errorPath, p.errorFile)
+logging.basicConfig(filename=logFile, format='%(levelname)s:: \t%(asctime)s %(message)s', level='DEBUG')
 
 # Configuring the dotcloud settings for mongodb
 if site == 'dotcloud':
-    print '----> Configuring the dotcloud settings for mongodb'
+    logging.debug('---- Configuring the dotcloud settings for mongodb')
+    print '---- Configuring the dotcloud settings for mongodb'
     configureDatabase.main(configFile)
 elif site == 'local':
-    print '***** Skipping all dotcloud configuration. '
+    logging.debug('Skipping all dotcloud configuration.')
+    print 'Skipping all dotcloud configuration. '
     pass
 
 # Setup the database
-print '----> Setting up and populating database'
-setupDatabase.main(configFile)
+print '---- Setting up and populating database'
+logging.debug('---- Setting up and populating database')
 
+setupDatabase.main(configFile)
+logging.shutdown()
+
+#/opt/ve/2.6/bin/python /home/dotcloud/code/src/consumeProcessTweets.py /home/dotcloud/code/config/twitterCrowded.cfg &

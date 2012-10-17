@@ -1,5 +1,8 @@
 #!/bin/sh
-python /home/dotcloud/code/setupAndBase/setupApp.py /home/dotcloud/code/config/crowded.cfg dotcloud >> /home/dotcloud/code/errors/setupAppErrors.log 2>&1
+mkdir /home/dotcloud/code/logs
+chmod 777 /home/dotcloud/code/logs
+
+python /home/dotcloud/code/setupAndBase/setupApp.py /home/dotcloud/code/config/crowded.cfg dotcloud
 
 crontab /home/dotcloud/code/config/_crontab
 

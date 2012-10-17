@@ -1,9 +1,27 @@
 import sys
 import os
-import mdb
 import json
+import logging
+#============================================================================================
+# TO ENSURE ALL OF THE FILES CAN SEE ONE ANOTHER.
+
+# Get the directory in which this was executed (current working dir)
+cwd = os.getcwd()
+wsDir = os.path.dirname(cwd)
+
+# Find out whats in this directory recursively
+for root, subFolders, files in os.walk(wsDir):
+    # Loop the folders listed in this directory
+    for folder in subFolders:
+        directory = os.path.join(root, folder)
+        if directory.find('.git') == -1:
+            if directory not in sys.path:
+                sys.path.append(directory)
+
+#============================================================================================
+import mdb
 from pymongo import DESCENDING, ASCENDING
-from baseUtils import getConfigParameters, handleErrors
+from baseUtils import getConfigParameters
 
 class params():
     
@@ -50,7 +68,7 @@ def getEnvironment(path='/home/dotcloud/', file='environment.json'):
     host = data['DOTCLOUD_DATA_MONGODB_HOST']
     adminUser = data['DOTCLOUD_DATA_MONGODB_LOGIN']
     adminPass = data['DOTCLOUD_DATA_MONGODB_PASSWORD']
-    
+
     p = params(port, host, adminUser, adminPass)
 
     return p
@@ -65,15 +83,11 @@ def main(configFile=None):
     dcParams = getEnvironment()
     
     # Authenticate on the admin db
-    c, dbh = mdb.getHandle(host=dcParams.mongoHost, port=dcParams.mongoPort, db='admin')
-    
-    # Authentication of the administrator
     try:
-        auth = dbh.authenticate(dcParams.adminUser, dcParams.adminPass)
-        print "---- Successful admin authorisation."
-    except Exception, e:
-        print "Failed to authenticate with mongo db as admin."
-        print e
+        c, dbh = mdb.getHandle(host=dcParams.mongoHost, port=dcParams.mongoPort, db='admin', user=dcParams.adminUser, password=dcParams.adminPass)
+    except:
+        logging.critical('Failed to connect to database as admin.')
+        sys.exit()
 
     # Create a new user
     p = getConfigParameters(configFile)
@@ -83,15 +97,18 @@ def main(configFile=None):
     c.disconnect()
     
     try:
-        c, dbh = mdb.getHandle(host=dcParams.mongoHost, port=dcParams.mongoPort, db=p.db)
-        auth = dbh.authenticate(p.dbUser, p.dbPassword)
-        print "---- Successful user authentication."
-    except Exception, e:
-        print "Failed to authenticate with mongo db as user."
-        print e
+        # Authenticate on the admin db
+        c, dbh = mdb.getHandle(host=dcParams.mongoHost, port=dcParams.mongoPort, db=p.db, user=p.dbUser, password=p.dbPassword)
+    except:
+        logging.critical("Failed to connect to db and get handle as user.", exc_info=True)
+        sys.exit()
     
     # Write out the new information to the regular config file
-    writeConfigFile(configFile, dcParams)
+    try:
+        writeConfigFile(configFile, dcParams)
+        print "----- writing out new config parameters."
+    except:
+        logging.critical("Failed in writing params back to config file.", exc_info=True)
     
     mdb.close(c, dbh)
     
